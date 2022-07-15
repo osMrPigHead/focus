@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>专注</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <script src="bootstrap.bundle.min.js"></script>
+    <script src="jquery.js"></script>
+    <script src="js.cookie.min.js"></script>
+    <script>
+        const FOCUS = 1500;
+        const BREAK = 300;
+        const REST = 600;
+        let secs = 0;
+        let full = 1;
+        let focusing = false;
+        let pausing = false;
+        let focus_times_i = 0;
+        let interval_id = 0;
+        function f_pause() {
+            pausing = !pausing;
+            if (pausing) {
+                document.getElementById("bgm-focusing").pause();
+                document.getElementById("bgm-rest").pause();
+                $("#pause").removeClass("btn-secondary");
+                $("#pause").addClass("btn-success");
+                $("#shaders").css("opacity", 0.75);
+                $("#pause").text("继续");
+            } else {
+                document.getElementById("bgm-focusing").play();
+                $("#pause").removeClass("btn-success");
+                $("#pause").addClass("btn-secondary");
+                $("#shaders").css("opacity", 0);
+                $("#pause").text("暂停");
+            }
+        }
+        function f_break() {
+            secs = -1;
+            func();
+        }
+        function f_rest() {
+            focus_times_i = 0;
+            last_full = full;
+            full = REST;
+            $("#progress").removeClass("bg-success");
+            $("#progress").addClass("bg-primary");
+            $("#pause").addClass("disabled");
+            $("#rest").addClass("disabled");
+            $("#focusing").text("长休息中");
+            secs = full - last_full + secs;
+            func();
+        }
+        function func() {
+            if (!pausing) {
+                if (secs < 0) {
+                    focusing = !focusing;
+                    if (focusing) {
+                        document.getElementById("bgm-focusing").currentTime = 0;
+                        document.getElementById("bgm-focusing").play();
+                        document.getElementById("bgm-rest").pause();
+                        full = FOCUS;
+                        $("#progress").removeClass("bg-dark");
+                        $("#progress").removeClass("bg-success");
+                        $("#progress").removeClass("bg-primary");
+                        $("#progress").addClass("bg-danger");
+                        $("#pause").removeClass("disabled");
+                        $("#break").removeClass("disabled");
+                        $("#rest").addClass("disabled");
+                        $("#stop").removeClass("disabled");
+                        $("#focusing").text("专注中");
+                    } else {
+                        document.getElementById("bgm-rest").currentTime = 0;
+                        document.getElementById("bgm-rest").play();
+                        document.getElementById("bgm-focusing").pause();
+                        focus_times_i++;
+                        if (Cookies.get("focus_times_s") === undefined) {
+                            Cookies.set("focus_times_s", 1, {expires: (4102444800 - new Date().getTime() / 1000) / 60 / 60 / 24});
+                        } else {
+                            Cookies.set("focus_times_s", parseInt(Cookies.get("focus_times_s")) + 1, {expires: (4102444800 - new Date().getTime() / 1000) / 60 / 60 / 24});
+                        }
+                        full = BREAK;
+                        $("#progress").removeClass("bg-dark");
+                        $("#progress").removeClass("bg-danger");
+                        $("#progress").removeClass("bg-primary");
+                        $("#progress").addClass("bg-success");
+                        $("#break").removeClass("disabled");
+                        $("#pause").addClass("disabled");
+                        $("#rest").removeClass("disabled");
+                        $("#stop").removeClass("disabled");
+                        $("#focusing").text("休息中");
+                    }
+                    $("#ift").text(focus_times_i);
+                    $("#sft").text(Cookies.get("focus_times_s"));
+                    secs = full;
+                }
+                minutes = parseInt(secs / 60);
+                seconds = parseInt(secs % 60);
+                if (minutes < 10) {
+                    minutes = "0" + minutes;
+                }
+                if (seconds < 10) {
+                    seconds = "0" + seconds;
+                }
+                $("#minutes").text(minutes);
+                $("#seconds").text(seconds);
+                $("#progress").css("width", (secs / full) * 100 + "%");
+                secs--;
+            }
+        }
+        function f_stop() {
+            if (focusing) {
+                if (Cookies.get("focus_times_s") === undefined) {
+                    Cookies.set("focus_times_s", 1, {expires: (4102444800 - new Date().getTime() / 1000) / 60 / 60 / 24});
+                } else {
+                    Cookies.set("focus_times_s", parseInt(Cookies.get("focus_times_s")) + 1, {expires: (4102444800 - new Date().getTime() / 1000) / 60 / 60 / 24});
+                }
+                $("#ift").text(focus_times_i + 1);
+                $("#sft").text(Cookies.get("focus_times_s"));
+            }
+            $("#pause").remove();
+            $("#break").remove();
+            $("#rest").remove();
+            $("#stop").remove();
+            $("#group").append($("<button id=\"start\" onclick=\"f_start();\" type=\"button\" class=\"btn btn-warning disabled\">开始</button>"));
+            $("#group").append($("<button id=\"clear\" onclick=\"f_clear();\" type=\"button\" class=\"btn btn-danger disabled\">清除数据</button>"));
+            $("#progress").css("width", "0");
+            resize();
+            document.getElementById("bgm-focusing").pause();
+            document.getElementById("bgm-rest").pause();
+            clearInterval(interval_id);
+            setTimeout(function () {
+                $("#progress").removeClass("bg-dark");
+                $("#progress").removeClass("bg-success");
+                $("#progress").removeClass("bg-primary");
+                $("#progress").removeClass("bg-danger");
+                $("#progress").addClass("bg-dark");
+                $("#start").removeClass("disabled");
+                $("#clear").removeClass("disabled");
+                $("#focusing").text("准备");
+                $("#progress").css("width", "100%");
+                $("#minutes").text("00");
+                $("#seconds").text("00");
+                $("#ift").text("0");
+            }, 1000);
+        }
+        function f_clear() {
+            Cookies.remove("focus_times_s");
+            $("#sft").text(0);
+        }
+        function f_start() {
+            secs = 0;
+            full = 1;
+            focusing = false;
+            pausing = false;
+            focus_times_i = 0;
+            $("#start").remove();
+            $("#clear").remove();
+            $("#group").append($("<button id=\"pause\" onclick=\"f_pause();\" type=\"button\" class=\"btn btn-secondary disabled\">暂停</button>"));
+            $("#group").append($("<button id=\"break\" onclick=\"f_break();\" type=\"button\" class=\"btn btn-danger disabled\">跳过</button>"));
+            $("#group").append($("<button id=\"rest\" onclick=\"f_rest();\" type=\"button\" class=\"btn btn-primary disabled\">长休息</button>"));
+            $("#group").append($("<button id=\"stop\" onclick=\"f_stop();\" type=\"button\" class=\"btn btn-warning disabled\">结束</button>"));
+            resize();
+            func();
+            interval_id = setInterval(func, 1000);
+        }
+        function resize() {
+            let x = (window.innerWidth * 0.1171875 + window.innerHeight * 0.234375) / 2;
+            $("#focusing").css({"font-size": x / 6 + "px", "padding-top": x * 1 / 24 +"px"});
+            $("#progressbar").css({"height": x * 7 / 24 +"px"});
+            $("#countdown").css("font-size", x + "px");
+            $("#times").css({"font-size": x / 8 + "px", "padding-top": x * 5 / 4 +"px"});
+            $("#group").css({"padding-left": x * 5 / 7 +"px", "padding-right": x * 5 / 7 +"px", "padding-bottom": x * 1 / 24});
+            $("button").css({"padding": x / 24 + "px " + x / 16 + "px", "font-size": x / 12 + "px", "border-radius": x / 48 + "px"});
+            $(".btn-group>.btn-group:not(:last-child)>.btn, .btn-group>.btn:not(:last-child):not(.dropdown-toggle)").css({"border-top-right-radius": 0, "border-bottom-right-radius": 0});
+            $(".btn-group>.btn-group:not(:first-child)>.btn, .btn-group>.btn:nth-child(n+3), .btn-group>:not(.btn-check)+.btn").css({"border-top-left-radius": 0, "border-bottom-left-radius": 0});
+        }
+        window.onresize = resize;
+        $(document).ready(function () {
+            resize();
+            if (Cookies.get("focus_times_s") !== undefined) {
+                $("#sft").text(Cookies.get("focus_times_s"));
+            }
+            $("main").removeClass("opacity-0");
+        });
+    </script>
+</head>
+<body class="bg-dark" style="user-select: none;" oncontextmenu="return false;">
+<main class="opacity-0" style="transition-duration: 0.5s;">
+    <img class="m-0 p-0 d-block fixed-top fixed-bottom w-100 h-100" alt src="bgp.jpg" style="object-fit: cover; z-index: -2;" />
+    <div class="m-0 p-0 fixed-top fixed-bottom w-100 h-100 opacity-50" style="z-index: -1; background-image: radial-gradient(rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, .625) 100%), radial-gradient(rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, .375) 175%);">
+    </div>
+    <div id="progressbar" class="fixed-top progress w-100 bg-secondary bg-opacity-50 opacity-75" style="border-radius: 0;">
+        <div id="progress" class="progress-bar bg-dark" style="width: 100%;"><div id="shaders" class="w-100 h-100 bg-secondary" style="opacity: 0; transition-duration: 0.5s;"></div></div>
+        <h1 id="focusing" class="fixed-top text-center text-white">准备</h1>
+    </div>
+    <h1 id="countdown" class="fixed-top justify-content-center h-100 text-white navbar opacity-75">
+        <span id="minutes">00</span>:<span id="seconds">00</span>
+    </h1>
+    <h1 id="times" class="fixed-top justify-content-center h-100 text-white navbar opacity-75">
+        本轮已专注&nbsp;<span id="ift">0</span>&nbsp;次，累计专注&nbsp;<span id="sft">0</span>&nbsp;次
+    </h1>
+    <div id="group" class="fixed-bottom btn-group" style="z-index: 1031;">
+        <button id="start" onclick="f_start();" type="button" class="btn btn-warning">开始</button>
+        <button id="clear" onclick="f_clear();" type="button" class="btn btn-danger">清除数据</button>
+    </div>
+    <audio src="focusing.mp3" id="bgm-focusing" controls="controls" hidden loop></audio>
+    <audio src="rest.mp3" id="bgm-rest" controls="controls" hidden loop></audio>
+</main>
+</body>
+</html>
